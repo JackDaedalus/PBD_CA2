@@ -1,0 +1,4 @@
+Generate a basic machine learning notebook in PySpark for a binary fraud classification problem, which can be run in Databricks CE
+
+
+Generate a basic machine learning Databricks CE notebook in PySpark for a binary fraud classification problem

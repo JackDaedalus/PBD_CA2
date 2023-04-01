@@ -1,0 +1,113 @@
+1. Set Up Environment
+
+# Import necessary libraries
+from pyspark.sql import SparkSession
+from pyspark.ml import Pipeline
+from pyspark.ml.feature import StringIndexer, OneHotEncoder, VectorAssembler
+from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
+from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
+
+
+
+2. Create a Spark session:
+
+spark = SparkSession.builder \
+    .appName("Fraud Detection") \
+    .getOrCreate()
+
+
+
+3. Load the data:
+Replace your_data_path with the path to your dataset in Databricks CE.
+
+
+data = spark.read \
+    .option("header", "true") \
+    .option("inferSchema", "true") \
+    .csv("your_data_path")
+
+
+
+
+4. Explore the data:
+
+data.printSchema()
+data.show(5)
+
+
+
+5. Preprocess the data:
+
+# Split the data into training and testing sets
+train_data, test_data = data.randomSplit([0.8, 0.2], seed=42)
+
+# Define the categorical features to be encoded
+categorical_features = ['cat_feature_1', 'cat_feature_2', ...]
+
+# StringIndexer and OneHotEncoder stages for categorical features
+string_indexers = [StringIndexer(inputCol=column, outputCol=column + "_index") for column in categorical_features]
+one_hot_encoders = [OneHotEncoder(inputCol=column + "_index", outputCol=column + "_onehot") for column in categorical_features]
+
+# Assemble the feature vector
+input_features = [column + "_onehot" for column in categorical_features] + ['num_feature_1', 'num_feature_2', ...]
+vector_assembler = VectorAssembler(inputCols=input_features, outputCol="features")
+
+# Create the pipeline
+preprocessing_stages = string_indexers + one_hot_encoders + [vector_assembler]
+
+
+
+
+
+6. Create the logistic regression model:
+
+lr = LogisticRegression(labelCol="label", featuresCol="features", maxIter=10)
+
+
+
+
+7.Create the full pipeline:
+
+pipeline = Pipeline(stages=preprocessing_stages + [lr])
+
+
+
+8. Hyperparameter tuning and cross-validation:
+
+param_grid = ParamGridBuilder() \
+    .addGrid(lr.regParam, [0.1, 0.01]) \
+    .addGrid(lr.elasticNetParam, [0.0, 0.5, 1.0]) \
+    .build()
+
+cross_val = CrossValidator(estimator=pipeline,
+                           estimatorParamMaps=param_grid,
+                           evaluator=BinaryClassificationEvaluator(),
+                           numFolds=5)
+
+
+
+
+
+9. Train the model:
+
+cv_model = cross_val.fit(train_data)
+
+
+
+10. Evaluate the model:
+
+predictions = cv_model.transform(test_data)
+evaluator = BinaryClassificationEvaluator()
+auc = evaluator.evaluate(predictions)
+print("AUC: ", auc)
+
+
+
+11. Save the best model:
+
+best_model = cv_model.bestModel
+best_model.write().overwrite().save("best_fraud_model")
+
+
+

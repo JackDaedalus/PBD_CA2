@@ -1,0 +1,116 @@
+Step 1: Import necessary libraries
+
+from pyspark.sql import SparkSession
+from pyspark.ml import Pipeline
+from pyspark.ml.feature import StringIndexer, VectorAssembler
+from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
+
+
+
+
+
+Step 2: Create a Spark session
+
+spark = SparkSession.builder \
+    .appName("Fraud Detection") \
+    .getOrCreate()
+
+
+
+
+
+Step 3: Load the dataset
+
+fraud_data_path = "/path/to/your/dataset.csv"
+df = spark.read.format("csv") \
+    .option("header", "true") \
+    .option("inferSchema", "true") \
+    .load(fraud_data_path)
+
+
+
+
+Step 4: Data preprocessing
+
+# Identify categorical columns and apply StringIndexer
+categorical_columns = ["column1", "column2", ...]  # Replace with your categorical column names
+
+indexers = [StringIndexer(inputCol=column, outputCol=column + "_index") for column in categorical_columns]
+
+# Create a list of features, excluding the target variable ("is_fraud")
+feature_columns = [column for column in df.columns if column not in ["is_fraud"] + categorical_columns]
+
+# Assemble features into a single vector
+vector_assembler = VectorAssembler(inputCols=feature_columns, outputCol="features")
+
+# Create preprocessing pipeline
+preprocessing_pipeline = Pipeline(stages=indexers + [vector_assembler])
+
+
+
+
+Step 5: Split data into train and test sets
+
+train_data, test_data = df.randomSplit([0.7, 0.3], seed=42)
+
+
+
+
+Step 6: Model training
+
+# Instantiate the Logistic Regression model
+lr = LogisticRegression(labelCol="is_fraud", featuresCol="features")
+
+# Create the full pipeline
+pipeline = Pipeline(stages=preprocessing_pipeline.getStages() + [lr])
+
+# Train the model
+model = pipeline.fit(train_data)
+
+
+
+
+Step 7: Model evaluation
+
+# Predict on test data
+predictions = model.transform(test_data)
+
+# Evaluate the model using BinaryClassificationEvaluator
+evaluator = BinaryClassificationEvaluator(rawPredictionCol="rawPrediction", labelCol="is_fraud", metricName="areaUnderROC")
+auc = evaluator.evaluate(predictions)
+print(f"Area under ROC curve: {auc:.3f}")
+
+
+
+
+Step 8: Save the model (optional)
+
+model_path = "/path/to/save/your/model"
+model.write().overwrite().save(model_path)
+
+
+
+
+Step 9: Stop the Spark session
+
+spark.stop()
+
+
+
+
+This notebook demonstrates how to use PySpark in Databricks CE to build a binary classification model for fraud detection. 
+Replace the dataset path, column names, and other parameters as needed
+
+
+
+
+
+
+
+
+
+
+
+
+
