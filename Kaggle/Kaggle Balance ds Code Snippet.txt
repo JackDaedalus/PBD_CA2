@@ -1,0 +1,19 @@
+# Load the dataset
+data = spark.read.csv("path/to/dataset.csv", header=True, inferSchema=True)
+
+# Count the number of samples in each class
+counts = data.groupBy("label").count().collect()
+minority_class_count = counts[0][1]
+majority_class_count = counts[1][1]
+
+# Calculate the ratio of the number of samples in the minority class to the majority class
+ratio = minority_class_count / majority_class_count
+
+# Create a DataFrame with the minority class samples
+minority_class = data.filter(data.label == 0)
+
+# Sample the majority class DataFrame to obtain a subsample with the same number of samples as the minority class DataFrame
+majority_class = data.filter(data.label == 1).sample(withReplacement=False, fraction=ratio, seed=42)
+
+# Concatenate the minority class DataFrame and the balanced majority class DataFrame to obtain the balanced dataset
+balanced_data = minority_class.union(majority_class)
