@@ -1,0 +1,2 @@
+# Assuming 'yourLabelColumnName' is the name of the label column in your DataFrame
+df = df.withColumnRenamed('yourLabelColumnName', 'trueLabel')
